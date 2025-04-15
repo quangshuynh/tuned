@@ -5,31 +5,44 @@ const App = () => {
   const [recording, setRecording] = useState(false);
   const [pitch, setPitch] = useState(0);
   const [audioURL, setAudioURL] = useState(null);
+  const [inputMode, setInputMode] = useState("mic"); // "mic" or "file"
+  const [audioFileURL, setAudioFileURL] = useState(null);
 
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
   const pitchShiftRef = useRef(null);
   const micRef = useRef(null);
+  const playerRef = useRef(null);
   const destinationRef = useRef(null);
 
   const startRecording = async () => {
     await Tone.start();
 
-    micRef.current = new Tone.UserMedia();
-    await micRef.current.open();
-
-    pitchShiftRef.current = new Tone.PitchShift({
-      pitch, 
-    });
-
+    // Create the pitch shift effect and media stream destination
+    pitchShiftRef.current = new Tone.PitchShift({ pitch });
     destinationRef.current = Tone.getContext().createMediaStreamDestination();
 
-    micRef.current.connect(pitchShiftRef.current);
-    
+    if (inputMode === "mic") {
+      // Set up the microphone input
+      micRef.current = new Tone.UserMedia();
+      await micRef.current.open();
+      micRef.current.connect(pitchShiftRef.current);
+    } else if (inputMode === "file" && audioFileURL) {
+      // For file input, create a Tone.Player and wait for it to load the audio file
+      playerRef.current = new Tone.Player();
+      // await for the audio file to load
+      await playerRef.current.load(audioFileURL);
+      playerRef.current.connect(pitchShiftRef.current);
+    } else {
+      console.error("No audio file selected!");
+      return;
+    }
+
+    // Route the processed signal to both the destination (speakers) and our recording destination.
     pitchShiftRef.current.toDestination();
-  
     pitchShiftRef.current.connect(destinationRef.current);
 
+    // Set up the MediaRecorder on the processed audio stream.
     mediaRecorderRef.current = new MediaRecorder(destinationRef.current.stream);
     mediaRecorderRef.current.ondataavailable = (e) => {
       if (e.data.size > 0) {
@@ -39,6 +52,11 @@ const App = () => {
     mediaRecorderRef.current.onstop = handleStopRecording;
     mediaRecorderRef.current.start();
 
+    // In file mode, start the player after the file has loaded.
+    if (inputMode === "file") {
+      playerRef.current.start();
+    }
+
     setRecording(true);
   };
 
@@ -46,8 +64,11 @@ const App = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       mediaRecorderRef.current.stop();
     }
-    if (micRef.current) {
+    if (inputMode === "mic" && micRef.current) {
       micRef.current.close();
+    }
+    if (inputMode === "file" && playerRef.current) {
+      playerRef.current.stop();
     }
     setRecording(false);
   };
@@ -69,15 +90,57 @@ const App = () => {
     }
   };
 
+  const handleInputModeChange = (e) => {
+    setInputMode(e.target.value);
+  };
+
+  const handleFileChange = (e) => {
+    if (e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const url = URL.createObjectURL(file);
+      setAudioFileURL(url);
+    }
+  };
+
   return (
     <div style={{ padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Tuned - Voice Effects Studio</h1>
-      
+      <h1>Tuned</h1>
+
+      <div style={{ marginBottom: '1rem' }}>
+        <label>
+          <input
+            type="radio"
+            value="mic"
+            checked={inputMode === "mic"}
+            onChange={handleInputModeChange}
+          />
+          Microphone
+        </label>
+        <label style={{ marginLeft: '1rem' }}>
+          <input
+            type="radio"
+            value="file"
+            checked={inputMode === "file"}
+            onChange={handleInputModeChange}
+          />
+          Audio File
+        </label>
+      </div>
+
+      {inputMode === "file" && (
+        <div style={{ marginBottom: '1rem' }}>
+          <input type="file" accept="audio/*" onChange={handleFileChange} />
+        </div>
+      )}
+
       {!recording ? (
-        <button onClick={startRecording}>Start Recording</button>
+        <button onClick={startRecording} disabled={inputMode === "file" && !audioFileURL}>
+          {inputMode === "mic" ? "Start Recording" : "Start Processing"}
+        </button>
       ) : (
         <button onClick={stopRecording}>Stop Recording</button>
       )}
+
       <div style={{ marginTop: '1rem' }}>
         <label>Pitch Shift (Semitones): {pitch}</label>
         <br />
@@ -90,12 +153,15 @@ const App = () => {
           onChange={handlePitchChange}
         />
       </div>
+
       {audioURL && (
         <div style={{ marginTop: '1rem' }}>
-          <h2>Recording Preview</h2>
+          <h2>Output Preview</h2>
           <audio src={audioURL} controls />
           <br />
-          <a href={audioURL} download="tuned_recording.webm">Download Recording</a>
+          <a href={audioURL} download="tuned_output.webm">
+            Download Output
+          </a>
         </div>
       )}
     </div>
