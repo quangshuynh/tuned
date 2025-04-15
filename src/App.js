@@ -5,7 +5,7 @@ const App = () => {
   const [recording, setRecording] = useState(false);
   const [pitch, setPitch] = useState(0);
   const [audioURL, setAudioURL] = useState(null);
-  const [inputMode, setInputMode] = useState("mic"); // "mic" or "file"
+  const [inputMode, setInputMode] = useState("mic"); 
   const [audioFileURL, setAudioFileURL] = useState(null);
 
   const mediaRecorderRef = useRef(null);
@@ -18,19 +18,15 @@ const App = () => {
   const startRecording = async () => {
     await Tone.start();
 
-    // Create the pitch shift effect and media stream destination
     pitchShiftRef.current = new Tone.PitchShift({ pitch });
     destinationRef.current = Tone.getContext().createMediaStreamDestination();
 
     if (inputMode === "mic") {
-      // Set up the microphone input
       micRef.current = new Tone.UserMedia();
       await micRef.current.open();
       micRef.current.connect(pitchShiftRef.current);
     } else if (inputMode === "file" && audioFileURL) {
-      // For file input, create a Tone.Player and wait for it to load the audio file
       playerRef.current = new Tone.Player();
-      // await for the audio file to load
       await playerRef.current.load(audioFileURL);
       playerRef.current.connect(pitchShiftRef.current);
     } else {
@@ -38,11 +34,9 @@ const App = () => {
       return;
     }
 
-    // Route the processed signal to both the destination (speakers) and our recording destination.
     pitchShiftRef.current.toDestination();
     pitchShiftRef.current.connect(destinationRef.current);
 
-    // Set up the MediaRecorder on the processed audio stream.
     mediaRecorderRef.current = new MediaRecorder(destinationRef.current.stream);
     mediaRecorderRef.current.ondataavailable = (e) => {
       if (e.data.size > 0) {
@@ -52,7 +46,6 @@ const App = () => {
     mediaRecorderRef.current.onstop = handleStopRecording;
     mediaRecorderRef.current.start();
 
-    // In file mode, start the player after the file has loaded.
     if (inputMode === "file") {
       playerRef.current.start();
     }
