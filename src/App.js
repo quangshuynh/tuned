@@ -1,12 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile } from '@ffmpeg/util';
 
 const App = () => {
   const [recording, setRecording] = useState(false);
   const [pitch, setPitch] = useState(0);
   const [audioURL, setAudioURL] = useState(null);
-  const [inputMode, setInputMode] = useState("mic"); // "mic" or "file"
+  const [inputMode, setInputMode] = useState("mic");
   const [audioFileURL, setAudioFileURL] = useState(null);
+  const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
 
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
@@ -14,23 +17,27 @@ const App = () => {
   const micRef = useRef(null);
   const playerRef = useRef(null);
   const destinationRef = useRef(null);
+  const ffmpegRef = useRef(null);
+
+  useEffect(() => {
+    ffmpegRef.current = new FFmpeg({ log: true });
+    ffmpegRef.current.load().then(() => {
+      setFfmpegLoaded(true);
+    });
+  }, []);
 
   const startRecording = async () => {
     await Tone.start();
 
-    // Create the pitch shift effect and media stream destination
     pitchShiftRef.current = new Tone.PitchShift({ pitch });
     destinationRef.current = Tone.getContext().createMediaStreamDestination();
 
     if (inputMode === "mic") {
-      // Set up the microphone input
       micRef.current = new Tone.UserMedia();
       await micRef.current.open();
       micRef.current.connect(pitchShiftRef.current);
     } else if (inputMode === "file" && audioFileURL) {
-      // For file input, create a Tone.Player and wait for it to load the audio file
       playerRef.current = new Tone.Player();
-      // await for the audio file to load
       await playerRef.current.load(audioFileURL);
       playerRef.current.connect(pitchShiftRef.current);
     } else {
@@ -38,11 +45,9 @@ const App = () => {
       return;
     }
 
-    // Route the processed signal to both the destination (speakers) and our recording destination.
     pitchShiftRef.current.toDestination();
     pitchShiftRef.current.connect(destinationRef.current);
 
-    // Set up the MediaRecorder on the processed audio stream.
     mediaRecorderRef.current = new MediaRecorder(destinationRef.current.stream);
     mediaRecorderRef.current.ondataavailable = (e) => {
       if (e.data.size > 0) {
@@ -52,8 +57,7 @@ const App = () => {
     mediaRecorderRef.current.onstop = handleStopRecording;
     mediaRecorderRef.current.start();
 
-    // In file mode, start the player after the file has loaded.
-    if (inputMode === "file") {
+    if (inputMode === "file" && playerRef.current) {
       playerRef.current.start();
     }
 
@@ -73,13 +77,36 @@ const App = () => {
     setRecording(false);
   };
 
-  const handleStopRecording = () => {
-    const blob = new Blob(recordedChunksRef.current, {
-      type: 'audio/webm'
-    });
-    const url = URL.createObjectURL(blob);
-    setAudioURL(url);
+  const handleStopRecording = async () => {
+    const blob = new Blob(recordedChunksRef.current, { type: 'audio/webm' });
     recordedChunksRef.current = [];
+
+    if (!ffmpegLoaded) {
+      console.error("FFmpeg is not loaded yet.");
+      return;
+    }
+
+    try {
+      const inputData = await fetchFile(blob);
+      await ffmpegRef.current.writeFile('input.webm', inputData);
+
+      await ffmpegRef.current.exec([
+        '-i', 'input.webm',
+        '-vn',
+        '-ar', '44100',
+        '-ac', '2',
+        '-b:a', '192k',
+        'output.mp3'
+      ]);
+
+      const mp3Data = await ffmpegRef.current.readFile('output.mp3');
+      const mp3Blob = new Blob([mp3Data.buffer], { type: 'audio/mp3' });
+      const url = URL.createObjectURL(mp3Blob);
+      setAudioURL(url);
+
+    } catch (error) {
+      console.error("Error converting to MP3:", error);
+    }
   };
 
   const handlePitchChange = (e) => {
@@ -159,7 +186,7 @@ const App = () => {
           <h2>Output Preview</h2>
           <audio src={audioURL} controls />
           <br />
-          <a href={audioURL} download="tuned_output.webm">
+          <a href={audioURL} download="tuned_output.mp3">
             Download Output
           </a>
         </div>
