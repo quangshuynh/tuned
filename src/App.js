@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import * as Tone from 'tone';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
+import './App.css'; 
 
 const App = () => {
   const [recording, setRecording] = useState(false);
@@ -9,6 +10,7 @@ const App = () => {
   const [audioURL, setAudioURL] = useState(null);
   const [inputMode, setInputMode] = useState("mic");
   const [audioFileURL, setAudioFileURL] = useState(null);
+  const [fileName, setFileName] = useState("");
   const [ffmpegLoaded, setFfmpegLoaded] = useState(false);
 
   const mediaRecorderRef = useRef(null);
@@ -124,17 +126,18 @@ const App = () => {
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
       const file = e.target.files[0];
+      setFileName(file.name);
       const url = URL.createObjectURL(file);
       setAudioFileURL(url);
     }
   };
 
   return (
-    <div style={{ padding: '1rem', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Tuned</h1>
+    <div className="container">
+      <h1 className="title">Tuned</h1>
 
-      <div style={{ marginBottom: '1rem' }}>
-        <label>
+      <div className="mode-selector">
+        <label className="mode-option">
           <input
             type="radio"
             value="mic"
@@ -143,7 +146,7 @@ const App = () => {
           />
           Microphone
         </label>
-        <label style={{ marginLeft: '1rem' }}>
+        <label className="mode-option">
           <input
             type="radio"
             value="file"
@@ -155,23 +158,44 @@ const App = () => {
       </div>
 
       {inputMode === "file" && (
-        <div style={{ marginBottom: '1rem' }}>
-          <input type="file" accept="audio/*" onChange={handleFileChange} />
+        <div className="file-input">
+          <label htmlFor="file-upload" className="custom-file-upload">
+            Choose File
+          </label>
+          <input
+            id="file-upload"
+            type="file"
+            accept="audio/*"
+            onChange={handleFileChange}
+          />
+          {fileName && (
+            <div className="file-info">
+              <p>Uploaded: <span>{fileName}</span></p>
+            </div>
+          )}
         </div>
       )}
 
       {!recording ? (
-        <button onClick={startRecording} disabled={inputMode === "file" && !audioFileURL}>
+        <button
+          className="action-btn"
+          onClick={startRecording}
+          disabled={inputMode === "file" && !audioFileURL}
+        >
           {inputMode === "mic" ? "Start Recording" : "Start Processing"}
         </button>
       ) : (
-        <button onClick={stopRecording}>Stop Recording</button>
+        <button className="action-btn stop" onClick={stopRecording}>
+          Stop Recording
+        </button>
       )}
 
-      <div style={{ marginTop: '1rem' }}>
-        <label>Pitch Shift (Semitones): {pitch}</label>
-        <br />
+      <div className="slider-container">
+        <label className="slider-label">
+          Pitch Shift (Semitones): {pitch}
+        </label>
         <input
+          className="slider"
           type="range"
           min="-12"
           max="12"
@@ -182,15 +206,19 @@ const App = () => {
       </div>
 
       {audioURL && (
-        <div style={{ marginTop: '1rem' }}>
+        <div className="audio-output">
           <h2>Output Preview</h2>
           <audio src={audioURL} controls />
           <br />
-          <a href={audioURL} download="tuned_output.mp3">
+          <a className="download-link" href={audioURL} download="tuned_output.mp3">
             Download Output
           </a>
         </div>
       )}
+
+      <footer className="footer">
+        Made by Quang
+      </footer>
     </div>
   );
 };
