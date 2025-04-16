@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "/tuned/static/css/main.e6c13ad2.css",
-    "main.js": "/tuned/static/js/main.c9c18090.js",
+    "main.css": "/tuned/static/css/main.7843c00d.css",
+    "main.js": "/tuned/static/js/main.f5305d8e.js",
     "static/js/726.7c7c4404.chunk.js": "/tuned/static/js/726.7c7c4404.chunk.js",
     "static/js/453.22aaee18.chunk.js": "/tuned/static/js/453.22aaee18.chunk.js",
     "index.html": "/tuned/index.html",
-    "main.e6c13ad2.css.map": "/tuned/static/css/main.e6c13ad2.css.map",
-    "main.c9c18090.js.map": "/tuned/static/js/main.c9c18090.js.map",
+    "main.7843c00d.css.map": "/tuned/static/css/main.7843c00d.css.map",
+    "main.f5305d8e.js.map": "/tuned/static/js/main.f5305d8e.js.map",
     "726.7c7c4404.chunk.js.map": "/tuned/static/js/726.7c7c4404.chunk.js.map",
     "453.22aaee18.chunk.js.map": "/tuned/static/js/453.22aaee18.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.e6c13ad2.css",
-    "static/js/main.c9c18090.js"
+    "static/css/main.7843c00d.css",
+    "static/js/main.f5305d8e.js"
   ]
 }
